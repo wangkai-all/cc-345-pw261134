@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>离线填报 · 版本核对与审核入库系统</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">📋 离线填报系统 <span class="sub">版本关系 × 文件内容 双核对</span></div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="filing">① 离线填报端</button>
+    <button class="tab" data-tab="review">② 接收服务 / 审核入库端</button>
+    <button class="tab" data-tab="downstream">③ 下游读取端</button>
+  </nav>
+  <div class="netbox">
+    <label class="switch" title="开启后所有请求在浏览器内被拦截，模拟断网（含上传中断）">
+      <input type="checkbox" id="offlineToggle"> <span>模拟断网</span>
+    </label>
+    <span id="netState" class="net online">● 在线</span>
+  </div>
+</header>
+
+<main>
+  <!-- ============================ 填报端 ============================ -->
+  <section id="tab-filing" class="tabpanel active">
+    <div class="grid two">
+      <div class="card">
+        <h2>填报提交</h2>
+        <div class="row">
+          <input id="newSubTitle" placeholder="填报标题（虚构资料，如：青云县水库巡查 2026-11）">
+          <button id="btnNewSub" class="primary">新建填报</button>
+          <button id="btnRefreshSubs">刷新</button>
+        </div>
+        <ul id="subList" class="sub-list"></ul>
+      </div>
+
+      <div class="card">
+        <h2>版本组装 <small id="curSubHint">未选择填报</small></h2>
+        <div class="row">
+          <button id="btnNewVersion" disabled>基于最新版发新版本（修订）</button>
+          <button id="btnSubmitReview" class="primary" disabled>送审</button>
+        </div>
+        <div id="versionGraph" class="dag"></div>
+        <div id="versionDetail"></div>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <h2>先传大附件（blob 先行，后补表单）</h2>
+        <p class="hint">附件可在创建版本之前上传；服务端给孤儿 blob 宽限期，超时才清理。</p>
+        <div class="row">
+          <input type="file" id="earlyFile">
+          <label class="inline">慢速模式 <input type="checkbox" id="slowMode"></label>
+          <label class="inline">每片延迟(ms) <input type="number" id="slowMs" value="400" style="width:80px"></label>
+        </div>
+        <ul id="earlyBlobs" class="blob-list"></ul>
+      </div>
+
+      <div class="card">
+        <h2>离线发件箱（outbox）</h2>
+        <p class="hint">断网期间的表单操作在此排队，恢复后按顺序自动重放；分片上传自动断点续传。</p>
+        <ul id="outboxList" class="outbox"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 审核端 ============================ -->
+  <section id="tab-review" class="tabpanel">
+    <div class="grid two">
+      <div class="card">
+        <h2>待审版本队列</h2>
+        <div class="row">
+          <select id="reviewFilter">
+            <option value="all">全部状态</option>
+            <option value="under_review" selected>审核中</option>
+            <option value="complete">待送审（已组装）</option>
+            <option value="approved">已通过</option>
+            <option value="rejected">已驳回</option>
+            <option value="superseded">已被取代</option>
+            <option value="assembling">组装中</option>
+          </select>
+          <button id="btnReviewRefresh">刷新</button>
+          <span class="hint" id="reviewPollHint">每 3 秒自动刷新</span>
+        </div>
+        <ul id="reviewList" class="sub-list"></ul>
+      </div>
+      <div class="card" id="reviewDetailCard">
+        <h2>版本核对与审核</h2>
+        <div id="reviewDetail" class="placeholder">选择左侧版本查看双核对结果</div>
+      </div>
+    </div>
+    <div class="grid two">
+      <div class="card">
+        <h2>存储与清理运维</h2>
+        <div id="storageStats" class="stats"></div>
+        <div class="row">
+          <button id="btnCleanup" class="warn">立即执行清理</button>
+          <button id="btnRefreshStats">刷新统计</button>
+        </div>
+        <p class="hint">清理只删除租约过期的上传会话与超过宽限期的孤儿 blob；正在恢复（持续续期）的上传受锁保护，不会被误删。</p>
+      </div>
+      <div class="card">
+        <h2>审计日志 / 清理器日志</h2>
+        <div id="auditLog" class="log"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 下游端 ============================ -->
+  <section id="tab-downstream" class="tabpanel">
+    <div class="card">
+      <h2>下游可读版本（仅完整且审核通过的最新版）</h2>
+      <p class="hint">每 3 秒拉取一次。组装中 / 审核中 / 被驳回 / 已被取代的版本在此均不可见。</p>
+      <div id="downstreamList"></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/api.js"></script>
+<script src="js/uploader.js"></script>
+<script src="js/filing.js"></script>
+<script src="js/review.js"></script>
+<script src="js/downstream.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
